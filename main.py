@@ -1,6 +1,5 @@
 import hydra
 from omegaconf import DictConfig
-from utils import read_yaml_file
 from pipeline.run_pipeline import run
 from pipeline.schema import PipelineConfig
 

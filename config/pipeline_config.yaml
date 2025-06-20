@@ -6,3 +6,4 @@ step: 0.2
 show_by: "mask"  # or "frame"
 use_binary_mask: true
 take_ss: true
+annoted_data_folder_path: ~/Downloads/Noise labeling in Hand writing.v1i.coco-segmentation
