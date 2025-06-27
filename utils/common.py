@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 from PIL import Image
 import yaml
+from typing import Callable
 
 
 def get_binary_mask(frame, threshold=180):
@@ -84,3 +85,15 @@ def metaDataVideo(input_file: str, step: 0.2):
     temp_video.release()
 
     return step_frames, max_ss_count
+
+def image2array(image) -> np.ndarray:
+  return np.array(image)
+
+def bench(fn: Callable, args: dict) -> None:
+    import time
+    start_time = time.time()
+    fn(**args)
+    end_time = time.time()
+    time_taken = end_time - start_time
+    print(f"FUNCTION: {fn} \n ARGS: {args} \n TIME_TAKE: {time_taken}")
+    return time_taken
