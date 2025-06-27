@@ -14,14 +14,16 @@ def show_image(image, fmt='HWC'):
     if fmt=='CHW':
         image = np.transpose(image, (1, 2, 0))
 
-    if image is not None:
-        while True:
-            cv2.imshow('image', image)
+    window_name = 'Segmentation Result (Press Q to quit)'
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    while True:
+        cv2.imshow(window_name, image)
 
-            key = cv2.waitKey(1) & 0xFF  # Capture key press
+        key = cv2.waitKey(1) & 0xFF  # Capture key press
 
-            if key == ord('q'):
-                break
+        if key == ord('q') or cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
+            break
+    cv2.destroyAllWindows()
 
 def getMetaDataAboutCocoFolder(config_file: str = 'config/pipeline_config.yaml'):
     """

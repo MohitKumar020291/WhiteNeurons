@@ -6,7 +6,9 @@ from .common import (
                 draw_bounding_box,
                 get_limits,
                 read_yaml_file,
-                metaDataVideo
+                metaDataVideo,
+                image2array,
+                bench
                 )
 
 
@@ -18,5 +20,7 @@ __all__ = [
     'draw_bounding_box',
     'get_limits',
     'read_yaml_file',
-    'metaDataVideo'
+    'metaDataVideo',
+    'image2array',
+    'bench'
 ]
