@@ -6,7 +6,8 @@ from ...AutoAnnotate import (
                 get_small_segments,
                 visual_segments,
                 MergeStateSize,
-                constant_weight
+                constant_weight,
+                _weight_mean_color
             )
 from utils import image2array
 
@@ -51,8 +52,16 @@ def merge_similar_regions(type_: str, image, segments):
 def merge_smaller_segments(image, segments, threshold):
     rag = graph.rag_mean_color(image, segments)
     
+    import numpy as np
     small_segments = get_small_segments(segments, threshold)
-    state = MergeStateSize(small_segments, type_='color', rag=rag)
+    print("Small segments true", np.count_nonzero(small_segments))
+
+    small_segments_dict = {
+        region_id: True
+        for region_id in small_segments
+        if region_id
+    }
+    state = MergeStateSize(small_segments_dict, type_='color', rag=rag)
 
     merged_segments = graph.merge_hierarchical(
         segments,
@@ -61,7 +70,7 @@ def merge_smaller_segments(image, segments, threshold):
         rag_copy=False,
         in_place_merge=True,
         merge_func=state.merge_func,
-        weight_func=constant_weight,
+        weight_func=_weight_mean_color,
     )
 
     return merged_segments
@@ -75,7 +84,7 @@ def ongoing_test():
     image = data.coffee()
     segments = image_segmenter(image)
     print("Before merging", len(np.unique(segments)))
-    small_merged_segments = merge_smaller_segments(image, segments, threshold=100)
+    small_merged_segments = merge_smaller_segments(image, segments, threshold=0.05)
     print("After merging", len(np.unique(small_merged_segments)))
     visual_segments(type_='color', segments=small_merged_segments, image=image)
 
