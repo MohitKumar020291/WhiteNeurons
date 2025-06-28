@@ -280,24 +280,21 @@ def constant_weight(graph, src, dst, n):
 
 
 class MergeStateSize:
-    def __init__(self, small_segments, type_, rag):
-        self.small_segments = small_segments
+    def __init__(self, small_segments_dict, type_, rag):
+        self.small_segments_dict = small_segments_dict
         self.type_ = type_
         if self.type_ == 'color':
             self.merge_criteria_func = merge_criteria_color
-        self.rag = rag
 
     def merge_func(self, rag, src, dst):
-        print(src, dst)
-        print(self.small_segments[src], self.small_segments[dst])
-        if self.small_segments[src] and self.small_segments[dst]:
+        if self.small_segments_dict.get(src, False) or self.small_segments_dict.get(dst, False):
+            print(self.small_segments_dict[src], self.small_segments_dict[dst])
             merged = self.merge_size_basis(rag, src, dst)
             if merged:
-                self.small_segments[src] = False
-                self.small_segments[dst] = False
+                self.small_segments_dict[src] = False
+                self.small_segments_dict[dst] = False
             return merged
         return False
     
     def merge_size_basis(self, rag, src, dst):
-        self.rag = rag
-        return self.merge_criteria_func(self.rag, src, dst)
+        return self.merge_criteria_func(rag, src, dst)
