@@ -1,5 +1,1 @@
-from .helper import show_image
-
-__all__ = [
-    'show_image'
-]
+# Just to run as a Module

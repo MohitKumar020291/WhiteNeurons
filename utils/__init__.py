@@ -11,6 +11,9 @@ from .common import (
                 bench
                 )
 
+from pipeline.loadAnnotedData.helper import (
+                getImagesFromJson
+)
 
 __all__ = [
     'get_binary_mask',

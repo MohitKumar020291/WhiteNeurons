@@ -2,59 +2,113 @@ import cv2
 import torch
 from torch.utils.data import Dataset
 import numpy as np
-from typing import Dict
-from .helper import (getImagesFromJson, 
+from typing import Dict, Type, List, Union
+from .helper import ( 
                 read_coco_file,
-                getSegmentsForAnImage,
-                maskImageFromSegment,
-                show_image)
+                )
 
-class CustomSegmentationDataset(Dataset):
-    def __init__(self, json_file: Dict, category_id: str, train_dest: str = None):
+
+class SingleSegmentedImage:
+    def __init__(self, image_json_file: Dict, images_json_file: Dict, train_dest: str = None, cats: list = None):
         """
         Initializes the dataset with data and corresponding labels.
         Args:
-            json_file (Dict or str): coco segmentation file or file path
+            json_file (Dict): coco segmentation file
+            annotations: annotations for an image
             labels (list or torch.Tensor): The corresponding labels.
         """
-        if isinstance(json_file, str):
-            self.json_file = read_coco_file(json_file)
-        else:
-            self.json_file = json_file
-        self.category_id = category_id
+        self.image_json_file = image_json_file
+        self.image_id = image_json_file["id"]
+        self.images_json_file = images_json_file
+        self.cats = cats or [cat['name'] for cat in images_json_file['categories']]
         self.train_dest = train_dest
-        self.data = self.json_file["images"]
+        self.data = list()
+        assert self.cal_data()
+    
+    def cal_data(self):
+        image_id = self.image_json_file["id"]
+        for category_id, _ in enumerate(self.cats):
+            self.data.append(read_coco_file(image_id, category_id, self.images_json_file, self.train_dest, show=False))
+        return True
 
     def __len__(self):
         """Returns the total number of samples in the dataset"""
         return len(self.data)
     
-    def __getitem__(self: "CustomSegmentationDataset", image_id: int):
+    def __getitem__(self, cat_id):
         """
         Retrieves a single data sample and its label at the given index.
         Args:
-            idx (int): The index of the image to retrieve.
+            image_cat_id: [image_id: int, category_id: int]
         Returns:
             tuple: A tuple containing the data sample and its label.
         """
-        image_info = self.data[image_id]
-        image_id = image_info["id"]
-        image_name = image_info["file_name"]
-        image_path = f"{self.train_dest}/{image_name}"
+        image, image_tensor, accumulated_mask, image_json_file, train_dest, annotations = \
+            self.data[cat_id]
 
-        image = cv2.imread(image_path)
+        return image, image_tensor, accumulated_mask, \
+            image_json_file, train_dest, annotations
+ 
 
-        segments_xy = getSegmentsForAnImage(self.json_file, image_id, self.category_id)
-
-        # accumulated_mask = np.zeros(image.shape[:2], dtype=np.uint8)
-        # for seg in segments_xy:
-        #     pts, image = maskImageFromSegment(seg, image)
-        #     # These points get filled with color at pts
-        #     cv2.fillPoly(accumulated_mask, [pts], color=1)
-        accumulated_mask, image = maskImageFromSegment(segments=segments_xy, image=image)
-
-        image_tensor = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
-        mask_tensor = torch.from_numpy(accumulated_mask).unsqueeze(0).float()
-
-        return image_tensor, mask_tensor
+class CollectionOfSegmentatedImages(Dataset):
+    segmented_images: List[Type["SingleSegmentedImage"]]
+    def __init__(self, images_json_file: Dict, train_dest: str, cats: list = None):
+        """
+        Args
+            json_files: list og json_file from 
+        """
+        self.images_json_file = images_json_file
+        self.train_dest = train_dest
+        self.data = dict()
+        self.cats = cats or [cat['name'] for cat in self.images_json_files[0]['categories']]
+        assert self.use_json_files(), "Error in use_json_file"
     
+    def use_json_files(self):
+        # Sanity checks -- Implement
+        # check if the format is coco file - could be extended to other files also
+
+        for image_json_file in self.images_json_file["images"]:
+            self.data[image_json_file["id"]] = \
+            SingleSegmentedImage(
+                    image_json_file, 
+                    self.images_json_file,
+                    train_dest=self.train_dest,
+                    cats=self.cats
+                    )
+        return True
+
+    def add_segmented_image(self, segmented_image: "SingleSegmentedImage"):
+        raise NotImplemented("The function has not been implemented")
+        # Doubt: Should we really allow the addition of data?
+        # If yes, find a modern way to update self.images_json_file
+        if not isinstance(segmented_image, "SegmentedImage"):
+            raise ValueError(f"segmented image should be of class SegmentedImage, provided {type(segmented_image)}")
+        
+        # A warning if the image is already present
+        self.data[segmented_image.image_id] = segmented_image
+        self.images_json_file.append(segmented_image.image_json_file)
+        return
+    
+    def __getitem__(self, ids: Union[list, int]):
+        """
+        ids:
+            if int - then considered as image id
+            if list -  then considered as image id, category id 
+        returns:
+            dict[image_id] = [accumulated masks for each category_i]
+        """
+        cat_id = None
+        if isinstance(ids, list):
+            image_id = ids[0]
+            cat_id = ids[1]
+        else:
+            image_id = ids
+
+        segmented_image = self.data[image_id]
+        acc_masks = dict()
+        for cat_id_, _ in enumerate(self.cats):
+            acc_masks[cat_id_] = segmented_image[cat_id_]
+        
+        if cat_id:
+            return acc_masks[cat_id]
+        return acc_masks

@@ -51,7 +51,7 @@ def test_merge_segments_shape():
     import numpy as np
 
     # image = data.coffee()
-    image_path = "ss/mask_ss_0.png"
+    image_path = "ss/mask_ss_17.png"
     image = Image.open(image_path)
     image = image2array(image)
     segments = image_segmenter(image)
@@ -63,8 +63,9 @@ def test_merge_segments_shape():
     # extra segments after the 
     type__based_merged_segs = small_merged_segments # Initial segments
     for type_ in ['color', 'shape', 'texture']:
-        type__based_merged_segs = merge_similar_regions(type_=type_, image = image, segments=type__based_merged_segs)
-        visual_segments(type_='color', segments=type__based_merged_segs, image=image)
+        # each time a new segment not accumulating but using the initial segment as small_merged_segments
+        merged_segs = merge_similar_regions(type_=type_, image=image, segments=small_merged_segments)
+        visual_segments(type_='overlay', segments=merged_segs, image=image)
 
 if __name__ == "__main__":
     # test_merge_segments(image='path', type_='color')

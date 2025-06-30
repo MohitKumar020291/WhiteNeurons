@@ -39,7 +39,11 @@ def merge_similar_regions(type_: str, image, segments):
         return merge_color_basis(rag, segments)
 
     if type_ == 'texture':
-        gray_scale_image = rgb2gray(image)
+        print(image.shape)
+        if len(image.shape) == 3:
+            gray_scale_image = rgb2gray(image)
+        elif len(image.shape) == 2:
+            gray_scale_image = image
         # mean color of rag_gray is just the intensity repeated three times
         # i.e. rag_gray.nodes[500]['mean color'] = [0.39357495 0.39357495 0.39357495]
         rag_gray = graph.rag_mean_color(gray_scale_image, segments, mode='similarity')

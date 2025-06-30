@@ -55,21 +55,28 @@ def getMetaDataAboutCocoFolder(config_file: str = 'config/pipeline_config.yaml')
     return train_dest, coco_destiny
 
 def getSegmentsForAnImage(json_file, image_id, category_id) -> list[list[tuple[float]]]:
+    """
+    Args
+        json_file: metadata about image
+        image_id: just for sanity check
+    return
+        accumulated mask for the image for a category - 1 and 0 on the x, y
+    """
     annotations = json_file['annotations']
-    segments = []
+    segments = list()
     for annotation in annotations:
         if annotation['image_id'] == image_id and annotation['category_id'] == category_id:
             segments.append(annotation['segmentation'][0])
-    
+
     #x, y
-    segments_xy = []
+    segments_xy = list()
     for segment_ in segments:
         segments_xy.append([])   
         for id, x in enumerate(segment_):
             if id % 2 == 0:
                 segments_xy[-1].append((x, segment_[id+1]))
     
-    return segments_xy
+    return segments_xy, segments
 
 def maskImageFromSegment(segments, image, fill=True):
     # mask for opencv
@@ -88,39 +95,35 @@ def getImagesFromJson(json_file, image_id: int) -> str:
     images = json_file['images']
     for image in images:
         if image['id'] == image_id:
-            image_name = image['file_name']
-            return image_name
+            return image
 
 def read_json_file(coco_destiny):
     with open(coco_destiny, 'r') as file:
         json_file = json.load(file)
     return json_file
 
-def read_coco_file(image_id, category_id, show=True, in_test=False):
-    train_dest, coco_destiny = getMetaDataAboutCocoFolder()
-
-    json_file = read_json_file(coco_destiny)
+def read_coco_file(image_id, category_id, images_json_file, train_dest, show: bool = True):
+    """
+    returns
+        image: a cv2.imread object
+        image_tensor: a tensor version of this image which shape CHW
+        mask_tensor: a tensor which represents the mask of the categor 
+        (0 or 1 for each pixel), shape = 1HW
+    """
+    image_json_file = getImagesFromJson(images_json_file, image_id)
 
     # Loading categories
     cats = []
-    for cat in json_file['categories']:
+    for cat in images_json_file['categories']:
         cats.append(cat['name'])
 
-    image_name = getImagesFromJson(json_file, image_id)
+    # image_name = getImagesFromJson(json_file, image_id)
+    image_name = image_json_file["file_name"]
     image_dest = train_dest + f'/{image_name}'
     image = cv2.imread(image_dest)
 
-    segments_xy = getSegmentsForAnImage(json_file, image_id, category_id)
-    # Just taking the first mask, how to combine multiple mask: there could be
-    # May be this is the way, but the boundaries will be continuos in this
-    # combined_segments_xy = []
-    # for segment_xy_ in segments_xy:
-    #     combined_segments_xy.extend(segment_xy_)
-    # accumulated_mask = np.zeros(image.shape[:2], dtype=np.uint8)
-    # for mask in segments_xy:
-    #     pts, image = maskImageFromSegment(mask, image)
-    #     cv2.fillPoly(accumulated_mask, [pts], color=1)
-    # show_image(image)
+    # Only pass the json_file for an image
+    segments_xy, annotations = getSegmentsForAnImage(images_json_file, image_id, category_id)
     accumulated_mask, image = maskImageFromSegment(segments=segments_xy, image=image)
     if show:
         show_image(image)
@@ -128,9 +131,26 @@ def read_coco_file(image_id, category_id, show=True, in_test=False):
     image_tensor = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
     mask_tensor = torch.from_numpy(accumulated_mask).unsqueeze(0).float()
 
-    if in_test == True:
-        return image_tensor, mask_tensor, json_file, train_dest
-    return image_tensor, mask_tensor
+    return image, image_tensor, mask_tensor, image_json_file, annotations, image_dest
+
+def CreateCollectionOfSegmentatedImages():
+    """
+    The function provides the CollectionOfSegmentatedImages
+    by default the data is taken from 'config/pipeline_config.yaml' or 
+    """
+    from .torchClassDataset import CollectionOfSegmentatedImages
+
+    train_dest, coco_destiny = getMetaDataAboutCocoFolder()
+    images_json_file = read_json_file(coco_destiny)
+    cats = [cat['name'] for cat in images_json_file['categories']]
+    cosi = CollectionOfSegmentatedImages(
+                    images_json_file, 
+                    train_dest,
+                    cats=cats
+                    )
+    return cosi
+
+
 
 if __name__ == "__main__":
-    read_coco_file(0, 2)
+    read_coco_file()
