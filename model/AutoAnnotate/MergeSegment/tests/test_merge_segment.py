@@ -18,6 +18,8 @@ try:
 except:
     raise Exception("Cannot import merge_similar_regions")
 
+from utils import image2array
+
 
 def test_merge_segments(image: str, type_: str) -> None:
     if image == 'sk':
@@ -48,10 +50,13 @@ def test_merge_segments_shape():
     from skimage import data
     import numpy as np
 
-    image = data.coffee()
+    # image = data.coffee()
+    image_path = "ss/mask_ss_0.png"
+    image = Image.open(image_path)
+    image = image2array(image)
     segments = image_segmenter(image)
     print("Before merging", len(np.unique(segments)))
-    small_merged_segments = merge_smaller_segments(image, segments, threshold=0.05)
+    small_merged_segments = merge_smaller_segments(image, segments, threshold=0.05) 
     print("After merging", len(np.unique(small_merged_segments)))
     visual_segments(type_='color', segments=small_merged_segments, image=image)
 

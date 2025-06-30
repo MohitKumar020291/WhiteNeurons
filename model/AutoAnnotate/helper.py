@@ -24,14 +24,19 @@ def visual_segments(type_: str, segments: Union[npnda, str], image, show=True):
     if type_ == 'overlay' and image is None:
         raise Exception(f"The original image, image is required, provided {image}")
     image = image2array(image)
+    if len(image.shape) == 2:  # grayscale to 3-channel
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    elif image.shape[2] == 4:  # RGBA to RGB
+        image = cv2.cvtColor(image, cv2.COLOR_RGBA2BGR)
 
     segments_normalized = (segments * 255 / segments.max()).astype('uint8')
     # segments_colored = cv2.applyColorMap(segments_normalized, cv2.COLORMAP_JET)
     segments_colored = label2rgb(segments, image=image, bg_label=0) # maps each label (region id) to a different colors
+    print(segments_normalized.shape, image.shape)
     segments_overlayed = cv2.addWeighted(
         image, 0.7,
         cv2.applyColorMap(
-            (segments * 255 / segments.max()).astype('uint8'),
+            segments_normalized,
             cv2.COLORMAP_JET
         ), 0.3, 0
     )

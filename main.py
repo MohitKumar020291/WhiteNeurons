@@ -3,7 +3,6 @@ from pipeline import apply_mask
 from omegaconf import DictConfig
 from pipeline.run_pipeline import run
 from pipeline.schema import PipelineConfig
-from model.AutoAnnotate.Segmentself import felzenszwalb
 
 @hydra.main(config_path="config", config_name="pipeline_config")
 def main(cfg: DictConfig):
