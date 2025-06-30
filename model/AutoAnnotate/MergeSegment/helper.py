@@ -288,7 +288,9 @@ class MergeStateSize:
 
     def merge_func(self, rag, src, dst):
         if self.small_segments_dict.get(src, False) or self.small_segments_dict.get(dst, False):
-            print(self.small_segments_dict[src], self.small_segments_dict[dst])
+            # print(self.small_segments_dict[src], self.small_segments_dict[dst])
+            print(rag.nodes[src]['pixel count'], rag.nodes[dst]['pixel count'])
+            print("Current Nodes:", len(list(rag.nodes)))
             merged = self.merge_size_basis(rag, src, dst)
             if merged:
                 self.small_segments_dict[src] = False
