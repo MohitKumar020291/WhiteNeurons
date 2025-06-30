@@ -9,9 +9,10 @@ from .MergeSegment.helper import (
                     merge_shape_basis,
                     get_small_segments,
                     MergeStateSize,
-                    constant_weight
+                    constant_weight,
+                    _weight_mean_color
                     )
-from .MergeSegment.merge_segments import merge_similar_regions
+from .MergeSegment.merge_segments import merge_similar_regions, merge_smaller_segments
 
 __all__ = [
     'felzenszwalb',
@@ -26,5 +27,7 @@ __all__ = [
     'merge_similar_regions',
     'get_small_segments',
     'MergeStateSize',
-    'constant_weight'
+    'constant_weight',
+    '_weight_mean_color',
+    'merge_smaller_segments'
 ]

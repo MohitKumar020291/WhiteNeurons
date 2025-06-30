@@ -1,8 +1,22 @@
 from PIL import Image
 import numpy as np
 
-
-from ....AutoAnnotate import merge_similar_regions, image_segmenter, visual_segments
+try:
+    from model.AutoAnnotate import merge_similar_regions
+except:
+    raise Exception("Cannot import merge_similar_regions")
+try:
+    from model.AutoAnnotate import image_segmenter
+except:
+    raise Exception("Cannot import merge_similar_regions")
+try:
+    from model.AutoAnnotate import visual_segments 
+except:
+    raise Exception("Cannot import merge_similar_regions")
+try:
+    from model.AutoAnnotate import merge_smaller_segments
+except:
+    raise Exception("Cannot import merge_similar_regions")
 
 
 def test_merge_segments(image: str, type_: str) -> None:
@@ -29,5 +43,24 @@ def test_merge_segments(image: str, type_: str) -> None:
     visual_segments(type_='color', segments=merged_segments, image=image)
 
 
+def test_merge_segments_shape():
+    from ....AutoAnnotate import image_segmenter
+    from skimage import data
+    import numpy as np
+
+    image = data.coffee()
+    segments = image_segmenter(image)
+    print("Before merging", len(np.unique(segments)))
+    small_merged_segments = merge_smaller_segments(image, segments, threshold=0.05)
+    print("After merging", len(np.unique(small_merged_segments)))
+    visual_segments(type_='color', segments=small_merged_segments, image=image)
+
+    # extra segments after the 
+    type__based_merged_segs = small_merged_segments # Initial segments
+    for type_ in ['color', 'shape', 'texture']:
+        type__based_merged_segs = merge_similar_regions(type_=type_, image = image, segments=type__based_merged_segs)
+        visual_segments(type_='color', segments=type__based_merged_segs, image=image)
+
 if __name__ == "__main__":
-    test_merge_segments(image='path', type_='color')
+    # test_merge_segments(image='path', type_='color')
+    test_merge_segments_shape()

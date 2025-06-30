@@ -12,11 +12,12 @@ from utils import image2array
 def visual_segments(type_: str, segments: Union[npnda, str], image, show=True):
     """
     Args:
-        type_:
+        - type_
             - org: shows the real b/w image - normalized version
             - color: color codes the org image
             - overlay: overlays over the real image
-        image: either real image array or path to read image from
+        - image 
+            either real image array or path to read image from
     """
     types = ['org', 'color', 'overlay']
     assert type_ in types, f"type_ should belong to {types}"

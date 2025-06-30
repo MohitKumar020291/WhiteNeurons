@@ -141,34 +141,39 @@ def is_noise(prop_src, prop_dst):
     return False
 
 
-def merge_criteria_shape(rag, src, dst, segments):
-    """
-        IOU would not work directly
-    """
-    props = get_regionprops_prop(segments, src, dst, mask=True)
-    prop_src = props[src]
-    prop_dst = props[dst]
-    mask_src = (segments == src)
-    mask_dst = (segments == dst)
+class MergeStateShape:
+    def __init__(self, segments):
+        self.segments = segments
 
-    to_merge = is_shape_merge_reasonable(prop_src, prop_dst, mask_src, mask_dst)
-    noise = is_noise(prop_src, prop_dst) # if src is a small noise region
+    def merge_criteria_shape(self, rag, src, dst):
+        """
+            IOU would not work directly
+        """
+        props = get_regionprops_prop(self.segments, src=src, dst=dst, mask=True)
+        prop_src = props[src]['prop']
+        prop_dst = props[dst]['prop']
+        mask_src = (self.segments == src)
+        mask_dst = (self.segments == dst)
 
-    if to_merge and not noise:
-        _, _, total_count, new_mean = get_minfo(rag, src, dst)
-        rag.nodes[dst]['mean color'] = new_mean
-        rag.nodes[dst]['pixel count'] = total_count
-        return True
-    return False
+        to_merge = is_shape_merge_reasonable(prop_src, prop_dst, mask_src, mask_dst)
+        noise = is_noise(prop_src, prop_dst) # if src is a small noise region
 
+        if to_merge and not noise:
+            _, _, total_count, new_mean = get_minfo(rag, src, dst)
+            rag.nodes[dst]['mean color'] = new_mean
+            rag.nodes[dst]['pixel count'] = total_count
+            self.segments[src] = dst
+            return True
+        return False
 
 def merge_shape_basis(rag, segments):
+    predicate = MergeStateShape(segments)
     merged_segments = graph.merge_hierarchical(
                         segments, rag,
                         thresh=0.05,
                         rag_copy=False,
                         in_place_merge=True,
-                        merge_func=merge_criteria_shape,
+                        merge_func=predicate.merge_criteria_shape,
                         weight_func=_weight_mean_color
                     )
     return merged_segments

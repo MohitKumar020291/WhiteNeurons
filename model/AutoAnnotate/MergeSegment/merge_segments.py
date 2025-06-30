@@ -9,6 +9,7 @@ from ...AutoAnnotate import (
                 constant_weight,
                 _weight_mean_color
             )
+
 from utils import image2array
 
 from skimage.color import rgb2lab, rgb2gray
@@ -23,7 +24,7 @@ def merge_similar_regions(type_: str, image, segments):
     assert type_ in types, f"the type_ should be one of {types}"
     image = image2array(image)
 
-    if type_ in ['color', 'shape']:
+    if type_ in ['color', 'shape', 'texture']:
         # Nodes = image regions
         # Edges = connections between adjacent regions
         # the distance is based on the similarity
@@ -87,7 +88,6 @@ def ongoing_test():
     small_merged_segments = merge_smaller_segments(image, segments, threshold=0.05)
     print("After merging", len(np.unique(small_merged_segments)))
     visual_segments(type_='color', segments=small_merged_segments, image=image)
-
 
 
 
