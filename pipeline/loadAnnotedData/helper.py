@@ -7,12 +7,20 @@ import torch
 from utils import read_yaml_file
 
 def show_image(image, fmt='HWC'):
+    """
+    NOTE:
+        fmt is the format of the passed image, the image is not to be converted in the fmt
+    """
     if isinstance(image, torch.Tensor):
         image = image.cpu().numpy()
         image = (image * 255).astype('uint8')
 
-    if fmt=='CHW':
+    if fmt == 'CHW':
         image = np.transpose(image, (1, 2, 0))
+    
+    # If image has a singleton channel dimension (grayscale), remove it:
+    if image.ndim == 3 and image.shape[-1] == 1:
+        image = image[:, :, 0]
 
     window_name = 'Segmentation Result (Press Q to quit)'
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
@@ -25,7 +33,8 @@ def show_image(image, fmt='HWC'):
             break
     cv2.destroyAllWindows()
 
-def getMetaDataAboutCocoFolder(config_file: str = 'config/pipeline_config.yaml'):
+
+def getMetaDataAboutCocoFolder(config_file: str = 'config/pipeline_config.yaml', type_='train'):
     """
         config: The folder containing the coco segmentation images
     """
@@ -35,10 +44,10 @@ def getMetaDataAboutCocoFolder(config_file: str = 'config/pipeline_config.yaml')
 
     files = os.listdir(resolved_path)
 
-    if 'train' not in files:
-        raise Exception("train folder is not present")
+    if type_ not in files:
+        raise Exception(f"{type_} folder is not present")
 
-    train_folder_files = os.listdir(resolved_path + "/train")
+    train_folder_files = os.listdir(resolved_path + f"/{type_}")
 
     coco_filename = None
     for file in train_folder_files:
@@ -49,7 +58,7 @@ def getMetaDataAboutCocoFolder(config_file: str = 'config/pipeline_config.yaml')
         raise Exception("No coco file")
 
     # Read json file using
-    train_dest = resolved_path + '/train'
+    train_dest = resolved_path + f"/{type_}"
     coco_destiny = train_dest + f"/{coco_filename}"
 
     return train_dest, coco_destiny
@@ -72,9 +81,9 @@ def getSegmentsForAnImage(json_file, image_id, category_id) -> list[list[tuple[f
     segments_xy = list()
     for segment_ in segments:
         segments_xy.append([])   
-        for id, x in enumerate(segment_):
-            if id % 2 == 0:
-                segments_xy[-1].append((x, segment_[id+1]))
+        for idx, x in enumerate(segment_):
+            if idx % 2 == 0:
+                segments_xy[-1].append((x, segment_[idx+1]))
     
     return segments_xy, segments
 
@@ -104,13 +113,18 @@ def read_json_file(coco_destiny):
 
 def read_coco_file(image_id, category_id, images_json_file, train_dest, show: bool = True):
     """
+    All images are to be returned in the form of HWC
     returns
-        image: a cv2.imread object
-        image_tensor: a tensor version of this image which shape CHW
+        image: a cv2.imread object # Stop passing it
+        image_tensor: a tensor version of this image which shape HWC
         mask_tensor: a tensor which represents the mask of the categor 
-        (0 or 1 for each pixel), shape = 1HW
+        (0 or 1 for each pixel), shape = HWC
     """
+    from PIL import Image
+    from utils import image2array
+
     image_json_file = getImagesFromJson(images_json_file, image_id)
+    image_file_name = image_json_file['file_name'].split(".")[0]
 
     # Loading categories
     cats = []
@@ -120,29 +134,33 @@ def read_coco_file(image_id, category_id, images_json_file, train_dest, show: bo
     # image_name = getImagesFromJson(json_file, image_id)
     image_name = image_json_file["file_name"]
     image_dest = train_dest + f'/{image_name}'
+    org_image = image2array(Image.open(image_dest))
     image = cv2.imread(image_dest)
 
     # Only pass the json_file for an image
     segments_xy, annotations = getSegmentsForAnImage(images_json_file, image_id, category_id)
-    accumulated_mask, image = maskImageFromSegment(segments=segments_xy, image=image)
+    accumulated_mask, masked_image = maskImageFromSegment(segments=segments_xy, image=image)
     if show:
-        show_image(image)
-    
-    image_tensor = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
-    mask_tensor = torch.from_numpy(accumulated_mask).unsqueeze(0).float()
+        show_image(masked_image)
 
-    return image, image_tensor, mask_tensor, image_json_file, annotations, image_dest
+    # masked_image_tensor = torch.from_numpy(masked_image).permute(2, 0, 1).float() / 255.0 # orginal image with applied mask
+    masked_image_tensor = torch.from_numpy(masked_image).float() / 255.0 # orginal image with applied mask
+    accumulated_mask_tensor = torch.from_numpy(accumulated_mask).unsqueeze(0).float().permute(1, 2, 0) # accumulation of same class: just a binary mask
 
-def CreateCollectionOfSegmentatedImages():
+    return image_file_name, org_image, masked_image_tensor, accumulated_mask_tensor, \
+        image_json_file, train_dest, annotations, image_dest
+
+def CreateCollectionOfSegmentatedImages(type_='train'):
     """
     The function provides the CollectionOfSegmentatedImages
     by default the data is taken from 'config/pipeline_config.yaml' or 
     """
     from .torchClassDataset import CollectionOfSegmentatedImages
 
-    train_dest, coco_destiny = getMetaDataAboutCocoFolder()
+    train_dest, coco_destiny = getMetaDataAboutCocoFolder(type_=type_)
     images_json_file = read_json_file(coco_destiny)
     cats = [cat['name'] for cat in images_json_file['categories']]
+    print(train_dest)
     cosi = CollectionOfSegmentatedImages(
                     images_json_file, 
                     train_dest,

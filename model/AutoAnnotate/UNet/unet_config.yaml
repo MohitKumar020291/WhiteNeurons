@@ -1,0 +1,5 @@
+epochs: 16
+bs: 4
+repeat_batches: 10
+# lr: 1e-3
+checkpoint_dir: checkpoints

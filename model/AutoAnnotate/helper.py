@@ -5,7 +5,7 @@ from skimage.color import label2rgb
 
 # modules are running individually
 # python3 -m model.AutoAnnotate.tests.segment_test
-from pipeline.loadAnnotedData import show_image
+from pipeline.loadAnnotedData.helper import show_image
 from utils import image2array
 
 
