@@ -16,7 +16,7 @@ def test_segmented_image():
     train_dest, coco_destiny = getMetaDataAboutCocoFolder()
     images_json_file = read_json_file(coco_destiny)
 
-    _, image_tensor1, accumulated_mask1, image_json_file, _, image_dest = \
+    image_file_name, _, image_tensor1, accumulated_mask1, image_json_file, _, image_dest = \
         read_coco_file(image_id, category_id, images_json_file, train_dest, show=False)
 
     seg_image = SingleSegmentedImage(
@@ -25,7 +25,7 @@ def test_segmented_image():
                     )
 
     # pulling out the image, accumulated mask for that category
-    _, image_tensor2, accumulated_mask2, _, _, _ = seg_image[3]
+    image_file_name, org_image, _, image_tensor2, accumulated_mask2, _, _, _ = seg_image[3]
 
     assert torch.allclose(image_tensor1, image_tensor2) == True
     assert torch.allclose(accumulated_mask1, accumulated_mask2) == True
@@ -41,19 +41,25 @@ def test_custom_datset():
 
     train_dest, coco_destiny = getMetaDataAboutCocoFolder()
     images_json_file = read_json_file(coco_destiny)
-    _, image_tensor1, accumulated_mask1, _, _, image_dest = \
+    image_filename, _, masked_image_tensor1, accumulated_mask1, _, _, _, image_dest = \
         read_coco_file(image_id, category_id, images_json_file, train_dest=train_dest, show=False)
 
     # dataset = CustomSegmentationDataset(json_file, category_id, train_dest=train_dest)
     dataset = CreateCollectionOfSegmentatedImages()
 
-    _, image_tensor2, accumulated_mask2, _, _, image_dest = \
+    image_filename, org_image, masked_image_tensor2, accumulated_mask2, _, _, _, image_dest, seg_image = \
             dataset[[image_id, category_id]]
 
-    assert torch.allclose(image_tensor1, image_tensor2) == True
+    import numpy as np
+    # show_image(image=accumulated_mask2)
+    assert (org_image.shape == org_image.shape)
+    assert (org_image.shape[1:] == org_image.shape[1:]) # 3 channels vs 2 channel
+
+    assert torch.allclose(masked_image_tensor1, masked_image_tensor2) == True
     assert torch.allclose(accumulated_mask1, accumulated_mask2) == True
     print("Test successful")
-    show_image(image=image_tensor2, fmt='CHW')
+    # print(org_image.shape, masked_image_tensor1.shape, masked_image_tensor2.shape, accumulated_mask1.shape, accumulated_mask2.shape)
+    show_image(image=accumulated_mask2)
 
 
 

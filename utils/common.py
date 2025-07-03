@@ -61,15 +61,12 @@ def read_yaml_file(filepath):
         with open(filepath, 'r') as file:
             data = yaml.safe_load(file)
             return data
-    except FileNotFoundError:
-        print(f"Error: File not found at {filepath}")
-        return None
+    except FileNotFoundError as e:
+        raise
     except yaml.YAMLError as e:
-        print(f"Error parsing YAML file: {e}")
-        return None
+        raise
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return None
+        raise
     
 
 def metaDataVideo(input_file: str, step: 0.2):

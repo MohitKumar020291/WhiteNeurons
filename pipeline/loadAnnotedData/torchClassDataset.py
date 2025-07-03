@@ -5,11 +5,16 @@ import numpy as np
 from typing import Dict, Type, List, Union
 from .helper import ( 
                 read_coco_file,
+                read_yaml_file
                 )
+from model.AutoAnnotate.helper import image2array
+import os
+from PIL import Image
+from pipeline.loadAnnotedData.helper import show_image
 
 
 class SingleSegmentedImage:
-    def __init__(self, image_json_file: Dict, images_json_file: Dict, train_dest: str = None, cats: list = None):
+    def __init__(self, image_json_file: Dict, images_json_file: Dict, train_dest: str = None, cats: list = None, type_="train"):
         """
         Initializes the dataset with data and corresponding labels.
         Args:
@@ -18,36 +23,60 @@ class SingleSegmentedImage:
             labels (list or torch.Tensor): The corresponding labels.
         """
         self.image_json_file = image_json_file
+        self.file_name = None
         self.image_id = image_json_file["id"]
         self.images_json_file = images_json_file
         self.cats = cats or [cat['name'] for cat in images_json_file['categories']]
         self.train_dest = train_dest
         self.data = list()
+        self.org_image = None
+        self.type_ = type_
         assert self.cal_data()
     
     def cal_data(self):
         image_id = self.image_json_file["id"]
         for category_id, _ in enumerate(self.cats):
-            self.data.append(read_coco_file(image_id, category_id, self.images_json_file, self.train_dest, show=False))
+            metadata_image = read_coco_file(image_id, category_id, self.images_json_file, self.train_dest, show=False)
+            self.data.append(metadata_image)
+            self.file_name = self.file_name or self.data[-1][0]
+            if self.org_image is None: assert(self.retrive_org_image()), "Failed to retrieve the org_image"
+            # self.org_image = metadata_image[1]
+        return True
+    
+    def retrive_org_image(self):
+        annorted_data_folder_path = read_yaml_file("config/pipeline_config.yaml")['annoted_data_folder_path']
+
+        resolved_path = os.path.expanduser(annorted_data_folder_path)
+        directories = os.listdir(resolved_path)
+        if self.type_ not in directories:
+            raise ValueError(f"cannot retreive orginal image from {self.type_} folder as it do not exists")
+        
+        type__path = resolved_path + f"/{self.type_}"
+        image_files = os.listdir(type__path)
+
+        for image_file in image_files:
+            image_file_split = image_file.split(".")
+            if image_file_split[0] == self.file_name:
+                self.org_image_dest = type__path + f"/{image_file}"
+                self.org_image = Image.open(self.org_image_dest)
+                self.org_image = image2array(self.org_image)
+                self.org_image = np.transpose(self.org_image, axes=(2, 0, 1))
         return True
 
-    def __len__(self):
-        """Returns the total number of samples in the dataset"""
-        return len(self.data)
+    # def __len__(self):
+    #     return len(self.data)
     
     def __getitem__(self, cat_id):
         """
         Retrieves a single data sample and its label at the given index.
         Args:
             image_cat_id: [image_id: int, category_id: int]
-        Returns:
-            tuple: A tuple containing the data sample and its label.
         """
-        image, image_tensor, accumulated_mask, image_json_file, train_dest, annotations = \
+        image_file_name, org_image, masked_image_tensor, accumulated_mask, image_json_file, train_dest, annotations, image_dest = \
             self.data[cat_id]
 
-        return image, image_tensor, accumulated_mask, \
-            image_json_file, train_dest, annotations
+        return image_file_name, org_image, masked_image_tensor, accumulated_mask, \
+            image_json_file, train_dest, annotations, image_dest
  
 
 class CollectionOfSegmentatedImages(Dataset):
@@ -76,39 +105,36 @@ class CollectionOfSegmentatedImages(Dataset):
                     cats=self.cats
                     )
         return True
+    
+    def __len__(self):
+        return len(self.data)
 
     def add_segmented_image(self, segmented_image: "SingleSegmentedImage"):
-        raise NotImplemented("The function has not been implemented")
         # Doubt: Should we really allow the addition of data?
         # If yes, find a modern way to update self.images_json_file
-        if not isinstance(segmented_image, "SegmentedImage"):
-            raise ValueError(f"segmented image should be of class SegmentedImage, provided {type(segmented_image)}")
-        
-        # A warning if the image is already present
-        self.data[segmented_image.image_id] = segmented_image
-        self.images_json_file.append(segmented_image.image_json_file)
-        return
-    
-    def __getitem__(self, ids: Union[list, int]):
-        """
-        ids:
-            if int - then considered as image id
-            if list -  then considered as image id, category id 
-        returns:
-            dict[image_id] = [accumulated masks for each category_i]
-        """
-        cat_id = None
-        if isinstance(ids, list):
-            image_id = ids[0]
-            cat_id = ids[1]
-        else:
-            image_id = ids
+        raise NotImplemented("The function has not been implemented")
 
-        segmented_image = self.data[image_id]
-        acc_masks = dict()
-        for cat_id_, _ in enumerate(self.cats):
-            acc_masks[cat_id_] = segmented_image[cat_id_]
+    def __getitem__(self, ids: Union[list, int, tuple]):
+        from collections.abc import Iterable
+        # Handle (image_id, category_id) or [image_id, category_id]
+        if isinstance(ids, (list, tuple)) and len(ids) == 2:
+            image_id, cat_id = ids
+            seg_image = self.data[image_id]
+            data_tuple = seg_image[cat_id]
+            return (*data_tuple, seg_image)
         
-        if cat_id:
-            return acc_masks[cat_id]
-        return acc_masks
+        # Handle single image_id
+        elif isinstance(ids, int):
+            return self.data[ids]
+
+        # Handle list of image_ids
+        elif isinstance(ids, Iterable):
+            outputs = [] #(acc_mask, seg_image)
+            cat_id = ids[-1]
+            for image_id in ids[:-1]:
+                # return [self.data[i] for i in ids]
+                idxx = [image_id, cat_id]
+                outputs.append(self[idxx])
+            return outputs
+        else:
+            raise TypeError("Invalid index type")
