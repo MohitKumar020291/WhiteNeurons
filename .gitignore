@@ -2,3 +2,5 @@
 ss/
 outputs/
 *.pth
+model/AutoAnnotate/UNet/checkpoints/training_history_*.json
+model/AutoAnnotate/UNet/checkpoints/training_history_all.json
