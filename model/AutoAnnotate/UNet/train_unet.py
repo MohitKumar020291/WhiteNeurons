@@ -1,3 +1,5 @@
+# Code should split the data - not loading the data once for valid and once for training
+
 import os
 import json
 import numpy as np
@@ -9,22 +11,7 @@ from numpy.random import choice
 from .dataset_loading import load_train_data
 from .function_blocks import UNet
 from utils import read_yaml_file
-
-
-def return_org_image_and_label_only(datas):
-    images = []
-    labels = []
-    for data in datas:
-        images.append(data[1])  # org image: [H, W, C]
-        labels.append(data[3])  # accumulated mask: [H, W, 1]
-
-    images = torch.tensor(np.stack(images))  # [N, H, W, C]
-    labels = torch.tensor(np.squeeze(np.stack(labels), axis=-1))  # [N, H, W]
-
-    assert (images.shape[:-1] == labels.shape)
-
-    # For Conv2D
-    return images.permute(0, 3, 1, 2).float(), labels.unsqueeze(1).float()
+from model.AutoAnnotate.helper import return_org_image_and_label_only
 
 
 @torch.no_grad()

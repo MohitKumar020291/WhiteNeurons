@@ -7,7 +7,7 @@ from .helper import (
                 read_coco_file,
                 read_yaml_file
                 )
-from model.AutoAnnotate.helper import image2array
+from utils import image2array
 import os
 from PIL import Image
 from pipeline.loadAnnotedData.helper import show_image
@@ -118,6 +118,7 @@ class CollectionOfSegmentatedImages(Dataset):
         from collections.abc import Iterable
         # Handle (image_id, category_id) or [image_id, category_id]
         if isinstance(ids, (list, tuple)) and len(ids) == 2:
+            # This should also only pass the seg images
             image_id, cat_id = ids
             seg_image = self.data[image_id]
             data_tuple = seg_image[cat_id]

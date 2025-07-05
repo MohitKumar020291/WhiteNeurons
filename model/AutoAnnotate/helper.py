@@ -2,6 +2,7 @@ import cv2
 from numpy import ndarray as npnda
 from typing import Union
 from skimage.color import label2rgb
+from pipeline.loadAnnotedData.torchClassDataset import SingleSegmentedImage
 
 # modules are running individually
 # python3 -m model.AutoAnnotate.tests.segment_test
@@ -52,9 +53,35 @@ def visual_segments(type_: str, segments: Union[npnda, str], image, show=True):
         images = [segments_normalized, segments_colored, segments_overlayed]
         return images[types.index(type_)]
     
+
 def visual_image(image) -> None:
     image = image2array(image) if not isinstance(image, npnda) else image
     show_image(image)
     return None
 
 
+def return_org_image_and_label_only(datas, cat_id=None):
+    import torch
+    import numpy as np
+
+    # This will loop over the categories
+    if isinstance(datas, SingleSegmentedImage):
+        if cat_id is None:
+            raise ValueError("The cat_id could not be None in case of a single instance of SingleSegmentedImage")        
+        data = datas[cat_id]
+        return return_org_image_and_label_only([data])
+
+    images = []
+    labels = []
+    for data in datas:
+        # This loop have do not contain the segmented_images, read CollectionOfSegmentatedImages
+        images.append(data[1])  # org image: [H, W, C]
+        labels.append(data[3])  # accumulated mask: [H, W, 1]
+
+    images = torch.tensor(np.stack(images))  # [N, H, W, C]
+    labels = torch.tensor(np.squeeze(np.stack(labels), axis=-1))  # [N, H, W]
+
+    assert (images.shape[:-1] == labels.shape)
+
+    # For Conv2D
+    return images.permute(0, 3, 1, 2).float(), labels.unsqueeze(1).float()

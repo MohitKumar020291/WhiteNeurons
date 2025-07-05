@@ -7,8 +7,9 @@ def load_train_data(type_='train'):
     dataset = CreateCollectionOfSegmentatedImages(type_=type_)
     return dataset
 
-def load_infer_data():
-    ...
+def load_infer_data(type_="test"):
+    # Same for now - not many values
+    return load_train_data(type_=type_)
 
 
 if __name__ == "__main__":
