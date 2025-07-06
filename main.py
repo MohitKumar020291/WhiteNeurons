@@ -13,5 +13,5 @@ def main(cfg: DictConfig):
     run(**validated.dict())
 
 if __name__ == '__main__':
-    # main()
-    from pipeline import getImagesFromJson
+    main()
+    # from pipeline import getImagesFromJson

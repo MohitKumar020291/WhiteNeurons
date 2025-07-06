@@ -39,8 +39,9 @@ class SingleSegmentedImage:
             metadata_image = read_coco_file(image_id, category_id, self.images_json_file, self.train_dest, show=False)
             self.data.append(metadata_image)
             self.file_name = self.file_name or self.data[-1][0]
-            if self.org_image is None: assert(self.retrive_org_image()), "Failed to retrieve the org_image"
-            # self.org_image = metadata_image[1]
+            # if self.org_image is None: assert(self.retrive_org_image()), "Failed to retrieve the org_image"
+            if self.org_image is None:
+                self.org_image =  metadata_image[1]
         return True
     
     def retrive_org_image(self):

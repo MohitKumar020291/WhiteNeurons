@@ -5,7 +5,7 @@ from typing import Tuple, Dict, AnyStr
 
 from utils import read_yaml_file
 from .dataset_loading import load_infer_data
-from model.AutoAnnotate.helper import return_org_image_and_label_only, show_image
+from model.AutoAnnotate.helper import return_org_image_and_label_only, show_image, visual_segments
 from model.AutoAnnotate.UNet.function_blocks import UNet
 
 
@@ -32,7 +32,6 @@ def load_models(train_config, checkpoint_dir: str, cats: list[str]) -> Dict:
             model_path = checkpoint_dir + f"/{file}"
             try:
                 cat = cats[int(file.split("_")[1][-1])]
-                print(cat)
                 models[cat] = torch.load(model_path)
             except FileNotFoundError:
                 print(f"Error: File not found at {model_path}")
@@ -43,10 +42,14 @@ def load_models(train_config, checkpoint_dir: str, cats: list[str]) -> Dict:
     return models
 
 
+def visualize_overlayed_image():
+    ...
+
+
 def main():
     torch.set_default_device("cuda")
 
-    dataset = load_infer_data()
+    dataset = load_infer_data(type_="test")
     cats = dataset[0].cats
 
     train_config, checkpoint_dir = infer_init()
@@ -60,12 +63,14 @@ def main():
         for i in range(len(dataset)):
             data = dataset[i]
             image, _ = return_org_image_and_label_only(data, cat_id)
-            output_segs = model(image)
+            output_segs = model(image.permute(0, 3, 1, 2).float()) # Handle through a function
             output_segs = output_segs.squeeze(0).permute(1, 2, 0)
             output_segs_numpy = output_segs.cpu().detach().numpy()
 
+            # confusion: lot's of unique values then why the black and white only?
             output_segs_numpy_normalized = (output_segs_numpy - np.min(output_segs_numpy)) / (np.max(output_segs_numpy) - np.min(output_segs_numpy))
-            show_image(image=output_segs_numpy_normalized)
+            image_numpy = image.squeeze(0).cpu().detach().numpy()
+            visual_segments(type_='overlay', segments=output_segs_numpy_normalized, image=image_numpy, window_name=f"CATEGORY = {cat}")
 
 if __name__ == '__main__':
     main()

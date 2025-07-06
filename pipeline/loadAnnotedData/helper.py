@@ -6,7 +6,7 @@ import cv2
 import torch
 from utils import read_yaml_file
 
-def show_image(image, fmt='HWC'):
+def show_image(image, fmt='HWC', window_name = None):
     """
     NOTE:
         fmt is the format of the passed image, the image is not to be converted in the fmt
@@ -15,14 +15,14 @@ def show_image(image, fmt='HWC'):
         image = image.cpu().numpy()
         image = (image * 255).astype('uint8')
 
-    if fmt == 'CHW':
+    if fmt.lower() == 'chw':
         image = np.transpose(image, (1, 2, 0))
     
     # If image has a singleton channel dimension (grayscale), remove it:
     if image.ndim == 3 and image.shape[-1] == 1:
         image = image[:, :, 0]
 
-    window_name = 'Segmentation Result (Press Q to quit)'
+    window_name = window_name or 'Segmentation Result (Press Q to quit)'
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
     while True:
         cv2.imshow(window_name, image)

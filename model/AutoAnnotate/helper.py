@@ -10,7 +10,7 @@ from pipeline.loadAnnotedData.helper import show_image
 from utils import image2array
 
 
-def visual_segments(type_: str, segments: Union[npnda, str], image, show=True):
+def visual_segments(type_: str, segments: Union[npnda, str], image, show=True, window_name=None):
     """
     Args:
         - type_
@@ -24,7 +24,12 @@ def visual_segments(type_: str, segments: Union[npnda, str], image, show=True):
     assert type_ in types, f"type_ should belong to {types}"
     if type_ == 'overlay' and image is None:
         raise Exception(f"The original image, image is required, provided {image}")
+    
+    from numpy import squeeze, uint8
     image = image2array(image)
+    if image.dtype != uint8:
+        image = (image * 255).clip(0, 255).astype(uint8)
+    segments = squeeze(segments, axis=-1)
     if len(image.shape) == 2:  # grayscale to 3-channel
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     elif image.shape[2] == 4:  # RGBA to RGB
@@ -33,7 +38,7 @@ def visual_segments(type_: str, segments: Union[npnda, str], image, show=True):
     segments_normalized = (segments * 255 / segments.max()).astype('uint8')
     # segments_colored = cv2.applyColorMap(segments_normalized, cv2.COLORMAP_JET)
     segments_colored = label2rgb(segments, image=image, bg_label=0) # maps each label (region id) to a different colors
-    print(segments_normalized.shape, image.shape)
+    print(image.dtype, segments_normalized.dtype)
     segments_overlayed = cv2.addWeighted(
         image, 0.7,
         cv2.applyColorMap(
@@ -44,11 +49,11 @@ def visual_segments(type_: str, segments: Union[npnda, str], image, show=True):
 
     if show:
         if type_ == 'org':
-            show_image(segments_normalized)
+            show_image(segments_normalized, window_name=window_name)
         elif type_ == 'color':
-            show_image(segments_colored)
+            show_image(segments_colored, window_name=window_name)
         else:
-            show_image(segments_overlayed)
+            show_image(segments_overlayed, window_name=window_name)
     else:
         images = [segments_normalized, segments_colored, segments_overlayed]
         return images[types.index(type_)]
@@ -75,7 +80,7 @@ def return_org_image_and_label_only(datas, cat_id=None):
     labels = []
     for data in datas:
         # This loop have do not contain the segmented_images, read CollectionOfSegmentatedImages
-        images.append(data[1])  # org image: [H, W, C]
+        images.append(data[1])  # org image: [H, W, C] or [C, H, W]
         labels.append(data[3])  # accumulated mask: [H, W, 1]
 
     images = torch.tensor(np.stack(images))  # [N, H, W, C]
@@ -84,4 +89,4 @@ def return_org_image_and_label_only(datas, cat_id=None):
     assert (images.shape[:-1] == labels.shape)
 
     # For Conv2D
-    return images.permute(0, 3, 1, 2).float(), labels.unsqueeze(1).float()
+    return images, labels.unsqueeze(1).float()
