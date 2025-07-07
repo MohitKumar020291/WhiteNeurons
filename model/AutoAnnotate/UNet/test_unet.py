@@ -1,58 +1,25 @@
 import torch
 import numpy as np
 import os
-from typing import Tuple, Dict, AnyStr
 
-from utils import read_yaml_file
 from .dataset_loading import load_infer_data
-from model.AutoAnnotate.helper import return_org_image_and_label_only, show_image, visual_segments
+from model.AutoAnnotate.helper import return_org_image_and_label_only, visual_segments
 from model.AutoAnnotate.UNet.function_blocks import UNet
+from model.AutoAnnotate.helper import test_init, load_models, post_process_infer
+from model.AutoAnnotate.helper import show_image
 
 
-def infer_init() -> Tuple[Dict, AnyStr]:
-    current_directory = os.path.dirname(__file__)
-    train_config_path = os.path.join(current_directory, 'unet_config.yaml')
-    train_config = read_yaml_file(train_config_path)
-
-    checkpoint_dir = train_config.get("checkpoint_dir")
-    if checkpoint_dir is None:
-        print(f"provide the checkpoints dir, where models are stored!, provided = {checkpoint_dir}")
-    checkpoint_dir = os.path.join(current_directory, checkpoint_dir)
-    
-    return train_config, checkpoint_dir
-
-
-def load_models(train_config, checkpoint_dir: str, cats: list[str]) -> Dict:
-    epochs = train_config.get("epochs", None)
-    assert epochs != None, "There are no epochs in train_config"
-    models = dict()
-    files = os.listdir(checkpoint_dir)
-    for file in files:
-        if '16' in file:
-            model_path = checkpoint_dir + f"/{file}"
-            try:
-                cat = cats[int(file.split("_")[1][-1])]
-                models[cat] = torch.load(model_path)
-            except FileNotFoundError:
-                print(f"Error: File not found at {model_path}")
-                exit()
-            except Exception as e:
-                print(f"An error occurred while loading the state dictionary: {e} from path = {model_path}")
-                exit()
-    return models
-
-
-def visualize_overlayed_image():
-    ...
 
 
 def main():
+    # should read the cl-arg for the visual_segments
     torch.set_default_device("cuda")
 
     dataset = load_infer_data(type_="test")
     cats = dataset[0].cats
 
-    train_config, checkpoint_dir = infer_init()
+    current_directory = os.path.dirname(__file__)
+    train_config, checkpoint_dir = test_init(current_directory)
     models = load_models(train_config, checkpoint_dir, cats)
 
     for cat_id, cat in enumerate(cats):
@@ -64,13 +31,17 @@ def main():
             data = dataset[i]
             image, _ = return_org_image_and_label_only(data, cat_id)
             output_segs = model(image.permute(0, 3, 1, 2).float()) # Handle through a function
-            output_segs = output_segs.squeeze(0).permute(1, 2, 0)
-            output_segs_numpy = output_segs.cpu().detach().numpy()
-
-            # confusion: lot's of unique values then why the black and white only?
-            output_segs_numpy_normalized = (output_segs_numpy - np.min(output_segs_numpy)) / (np.max(output_segs_numpy) - np.min(output_segs_numpy))
-            image_numpy = image.squeeze(0).cpu().detach().numpy()
+            image_numpy, output_segs_numpy_normalized = post_process_infer(image, output_segs)
             visual_segments(type_='overlay', segments=output_segs_numpy_normalized, image=image_numpy, window_name=f"CATEGORY = {cat}")
+
 
 if __name__ == '__main__':
     main()
+    # import cv2
+    # dirc = "/home/mohitb1i/pytorch_env/WhiteNeurons/ss"
+    # images = os.listdir(dirc)
+    # image = cv2.imread(os.path.join(dirc, images[0]))
+    # print(image.shape)
+    # from utils import image2array
+    # image = image2array(image)
+    # print(image.shape)

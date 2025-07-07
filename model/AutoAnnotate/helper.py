@@ -1,13 +1,19 @@
+import os
+import pickle
+import torch
 import cv2
 from numpy import ndarray as npnda
-from typing import Union
+import numpy as np
+from typing import Union, Tuple, Dict, AnyStr
 from skimage.color import label2rgb
 from pipeline.loadAnnotedData.torchClassDataset import SingleSegmentedImage
 
 # modules are running individually
 # python3 -m model.AutoAnnotate.tests.segment_test
 from pipeline.loadAnnotedData.helper import show_image
-from utils import image2array
+from utils import image2array, read_yaml_file
+
+
 
 
 def visual_segments(type_: str, segments: Union[npnda, str], image, show=True, window_name=None):
@@ -17,8 +23,7 @@ def visual_segments(type_: str, segments: Union[npnda, str], image, show=True, w
             - org: shows the real b/w image - normalized version
             - color: color codes the org image
             - overlay: overlays over the real image
-        - image 
-            either real image array or path to read image from
+        - image: either real image array or path to read image from
     """
     types = ['org', 'color', 'overlay']
     assert type_ in types, f"type_ should belong to {types}"
@@ -38,7 +43,6 @@ def visual_segments(type_: str, segments: Union[npnda, str], image, show=True, w
     segments_normalized = (segments * 255 / segments.max()).astype('uint8')
     # segments_colored = cv2.applyColorMap(segments_normalized, cv2.COLORMAP_JET)
     segments_colored = label2rgb(segments, image=image, bg_label=0) # maps each label (region id) to a different colors
-    print(image.dtype, segments_normalized.dtype)
     segments_overlayed = cv2.addWeighted(
         image, 0.7,
         cv2.applyColorMap(
@@ -90,3 +94,62 @@ def return_org_image_and_label_only(datas, cat_id=None):
 
     # For Conv2D
     return images, labels.unsqueeze(1).float()
+
+
+def test_init(unet_directory) -> Tuple[Dict, AnyStr]:
+    # current_directory = os.path.dirname(__file__)
+    train_config_path = os.path.join(unet_directory, 'unet_config.yaml')
+    train_config = read_yaml_file(train_config_path)
+
+    checkpoint_dir = train_config.get("checkpoint_dir")
+    if checkpoint_dir is None:
+        print(f"provide the checkpoints dir, where models are stored!, provided = {checkpoint_dir}")
+    checkpoint_dir = os.path.join(unet_directory, checkpoint_dir)
+    
+    return train_config, checkpoint_dir
+
+
+def load_models(train_config, checkpoint_dir: str, cats: list[str]) -> Dict:
+    epochs = train_config.get("epochs", None)
+    assert epochs != None, "There are no epochs in train_config"
+    models = dict()
+    files = os.listdir(checkpoint_dir)
+    for file in files:
+        if '16' in file:
+            model_path = checkpoint_dir + f"/{file}"
+            try:
+                cat = cats[int(file.split("_")[1][-1])]
+                models[cat] = torch.load(model_path)
+            except FileNotFoundError:
+                print(f"Error: File not found at {model_path}")
+                exit()
+            except Exception as e:
+                print(f"An error occurred while loading the state dictionary: {e} from path = {model_path}")
+                exit()
+    return models
+
+
+
+def cache_if_not_exists(path, compute_fn, update=False):
+    if not os.path.exists(path) or update:
+        print("Cache not found or update requested. Recomputing...")
+        result = compute_fn()
+        with open(path, 'wb') as f:
+            pickle.dump(result, f)
+    else:
+        print("Loading from cache:", path)
+        with open(path, 'rb') as f:
+            result = pickle.load(f)
+    return result
+
+
+
+def post_process_infer(image, output_segs):
+    output_segs = output_segs.squeeze(0).permute(1, 2, 0)
+    output_segs_numpy = output_segs.cpu().detach().numpy()
+
+    # confusion: lot's of unique values then why the black and white only?
+    output_segs_numpy_normalized = (output_segs_numpy - np.min(output_segs_numpy)) / (np.max(output_segs_numpy) - np.min(output_segs_numpy))
+    image_numpy = image.squeeze(0).cpu().detach().numpy()
+
+    return image_numpy, output_segs_numpy_normalized

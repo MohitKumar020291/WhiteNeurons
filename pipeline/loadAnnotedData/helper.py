@@ -12,7 +12,11 @@ def show_image(image, fmt='HWC', window_name = None):
         fmt is the format of the passed image, the image is not to be converted in the fmt
     """
     if isinstance(image, torch.Tensor):
-        image = image.cpu().numpy()
+        if image.is_cuda:
+            image = image.cpu().detach().numpy()
+        else:
+            image = image.cpu().numpy()
+
         image = (image * 255).astype('uint8')
 
     if fmt.lower() == 'chw':
@@ -167,8 +171,3 @@ def CreateCollectionOfSegmentatedImages(type_='train'):
                     cats=cats
                     )
     return cosi
-
-
-
-if __name__ == "__main__":
-    read_coco_file()
