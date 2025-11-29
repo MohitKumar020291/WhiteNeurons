@@ -10,6 +10,8 @@ elif [ "$1" = "test_unet" ]; then
     python3 -m model.AutoAnnotate.UNet.test_unet
 elif [ "$1" = "experiment_unet" ]; then
     python3 -m model.AutoAnnotate.UNet.experiment_unet
+elif [ "$1" = "yolo_train" ]; then
+    python3 -m model.AutoAnnotate.YOLOV8.train
 elif [ "$1" = "seg_unet" ]; then
     if [ -n "$2" ]; then
         echo "Passing update_cache=$2"
@@ -20,4 +22,6 @@ elif [ "$1" = "seg_unet" ]; then
         echo "running model.AutoAnnotate.AutoAnnotate.seg_unet.py"
         python3 -m model.AutoAnnotate.AutoAnnotate.seg_unet
     fi
+elif [ "$1" = "whiteNeuronsSSH" ]; then
+    cat /home/mohitb1i/.ssh/id_rsa_whiteNeurons.pub
 fi

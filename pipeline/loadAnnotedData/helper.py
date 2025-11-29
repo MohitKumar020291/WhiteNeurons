@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import cv2
 import torch
+from PIL import Image
+from utils import image2array
 from utils import read_yaml_file
 
 def show_image(image, fmt='HWC', window_name = None):
@@ -124,8 +126,6 @@ def read_coco_file(image_id, category_id, images_json_file, train_dest, show: bo
         mask_tensor: a tensor which represents the mask of the categor 
         (0 or 1 for each pixel), shape = HWC
     """
-    from PIL import Image
-    from utils import image2array
 
     image_json_file = getImagesFromJson(images_json_file, image_id)
     image_file_name = image_json_file['file_name'].split(".")[0]

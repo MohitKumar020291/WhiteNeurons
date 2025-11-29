@@ -1,6 +1,8 @@
 import cv2
 from utils import draw_bounding_box
 
+
+
 def play_vid(frame, mask, show_by):
     if show_by == 'frame':
         frame_with_box = draw_bounding_box(frame, mask)

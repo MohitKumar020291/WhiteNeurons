@@ -7,7 +7,7 @@ from typing import Callable
 
 def get_binary_mask(frame, threshold=180):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    _, binary = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY_INV)
+    _, binary = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY_INV) #pixel > threshold -> 0 else 255
     return binary
 
 
