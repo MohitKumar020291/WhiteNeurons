@@ -15,7 +15,6 @@ from utils import image2array, read_yaml_file
 
 
 
-
 def visual_segments(type_: str, segments: Union[npnda, str], image, show=True, window_name=None):
     """
     Args:
@@ -110,6 +109,9 @@ def test_init(unet_directory) -> Tuple[Dict, AnyStr]:
 
 
 def load_models(train_config, checkpoint_dir: str, cats: list[str]) -> Dict:
+    """
+        loads best model (16th trained) from checkpoints dir
+    """
     epochs = train_config.get("epochs", None)
     assert epochs != None, "There are no epochs in train_config"
     models = dict()
@@ -145,6 +147,14 @@ def cache_if_not_exists(path, compute_fn, update=False):
 
 
 def post_process_infer(image, output_segs):
+    """
+        Args:
+            output_segs: torch.tensor of size (N, C, W, H)
+
+        return:
+            output_segs as a numpy array on cpu with shape (W, H, C)
+            image with shape (W, H, C)
+    """
     output_segs = output_segs.squeeze(0).permute(1, 2, 0)
     output_segs_numpy = output_segs.cpu().detach().numpy()
 

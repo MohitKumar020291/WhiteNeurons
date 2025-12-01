@@ -2,12 +2,14 @@ import os
 import cv2
 
 from ultralytics import YOLO
-from main import read_yaml_file
+from model.YOLOV8.main import read_yaml_file
 
 
 
-current_dir = os.path.dirname(__file__)
+current_dir = os.path.dirname(__file__) # trained model is there
 model_rel_path = 'train/weights/last.pt'
+print(os.path.join(current_dir, model_rel_path))
+print(os.path.exists(os.path.join(current_dir, model_rel_path)))
 model_path = os.path.join(current_dir, model_rel_path)
 assert os.path.exists(model_path)
 
