@@ -46,12 +46,18 @@ def main():
     current_directory = os.path.dirname(__file__)
     images = loading_images(current_directory)
 
+    # cats = ['objects', 'hand', 'noise', 'not-noise', 'page-marker']
     cats = get_cats()
     unet_directory = "/home/mohitb1i/pytorch_env/WhiteNeurons/model/AutoAnnotate/UNet" # hardcoded
     train_config, checkpoint_dir = test_init(unet_directory)
 
     models = load_models(train_config, checkpoint_dir, cats)
-    for cat in cats[2:]:
+    # for cat in cats[2:]:
+    for cat in cats:
+        print(cat)
+        if cat != "not-noise":
+            print(True)
+            continue
         print("CATEGORY:", cat)
         model = UNet()
         model.load_state_dict(models[cat]['model_state_dict'])
@@ -62,7 +68,7 @@ def main():
             show_image(image_numpy)
             show_image(output_segs_numpy_normalized)
             visual_segments(type_='overlay', segments=output_segs_numpy_normalized, image=image_numpy, window_name=f"CATEGORY = {cat}")
-        
+
 
 
 if __name__ == "__main__":
